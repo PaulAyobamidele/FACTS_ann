@@ -1,0 +1,36 @@
+function placeFACTS(nw, networkFile, deviceType, resultPath)
+    % Place STATCOM or UPFC in the network
+    fprintf('Placing %s...\n', deviceType);
+    tic;
+    
+    % Determine minimum voltage bus
+    Vmin = 1.3; ind_min = 1;
+    for ii = 1:length(nw.Bus)
+        if nw.Bus(ii).V < Vmin
+            Vmin = nw.Bus(ii).V;
+            ind_min = ii;
+        end
+    end
+    
+    % Reload network with FACTS device
+    data = NetworkExtract(networkFile);
+    data.FACT.(deviceType).Iconn = ind_min;
+    nw_fact = power.Network('BusData', data.BusData, ...
+        'LineData', data.LineData, ...
+        'Basemva', data.Basemva, ...
+        'BusNames', data.BusNames, ...
+        'Shunt', data.ShuntData, ...
+        'Fact', data.FACT, ...
+        'Generatordata', data.GenData, ...
+        'MaxIter', 500, ...
+        'Tolerance', 1e-8, ...
+        'LoadFlowAlgorithm', 'NR', ...
+        'OutputDir', resultPath, ...
+        'Log', sprintf('%s_%s_log.txt', deviceType, resultPath));
+    
+    % Perform load flow
+    loadFlow(nw_fact);
+    log(nw_fact);
+    
+    fprintf('%s placement completed in %.2f seconds.\n', deviceType, toc);
+end
